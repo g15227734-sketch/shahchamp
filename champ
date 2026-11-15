@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ChampionShah — Шахматы Онлайн без VPN</title>
+<style>
+  :root {
+    --bg: #161512;
+    --panel: #262421;
+    --panel-alt: #302e2c;
+    --border: #3d3935;
+    --accent: #81b64c;
+    --accent-hover: #95c95f;
+    --gold: #f59e0b;
+    --blue: #3b82f6;
+    --red: #ef4444;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --sq-light: #ebecd0;
+    --sq-dark: #739552;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+  }
+  /* Шапка сайта */
+  .topbar {
+    width: 100%;
+    max-width: 960px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 900;
+    font-size: 18px;
+    color: #fff;
+  }
+  .brand span {
+    background: var(--gold);
+    color: #111;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 800;
+  }
+  .nav-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button {
+    background: var(--panel-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  button:active { transform: scale(0.97); }
+  .btn-green { background: var(--accent); color: #fff; border-color: #6ea03c; }
+  .btn-blue { background: var(--blue); color: #fff; border-color: #2563eb; }
+  .btn-gold { background: var(--gold); color: #111; border-color: #d97706; }
+  .btn-red { background: var(--red); color: #fff; border-color: #dc2626; }
+
+  /* Основная сетка */
+  .layout {
+    width: 100%;
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    justify-items: center;
+  }
+  @media (min-width: 820px) {
+    .layout { grid-template-columns: auto 1fr; align-items: start; }
+  }
+
+  /* Левая колонка с доской */
+  .board-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+  }
+  .player-bar {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 4px 0;
+  }
+  .p-info { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  .clock {
+    background: #111;
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 15px;
+    font-weight: 800;
+    border: 1px solid var(--border);
+  }
+
+  /* Панель настроек Бота */
+  .bot-bar {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 10px;
+    margin-bottom: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+  }
+  select, input {
+    background: #181715;
+    color: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  /* Контейнер доски с жёсткими размерами для iPhone и Android */
+  #board-wrap {
+    position: relative;
+    width: 340px;
+    height: 340px;
+    min-width: 288px;
+    min-height: 288px;
+    border: 3px solid #3a3733;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--sq-dark);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+    flex-shrink: 0;
+  }
+  #chessboard {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(8, 12.5%);
+    grid-template-rows: repeat(8, 12.5%);
+  }
+  .sq {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sq.light { background: var(--sq-light); }
+  .sq.dark { background: var(--sq-dark); }
+  .sq.selected { background: rgba(255, 255, 51, 0.65) !important; }
+  .sq.last-move { background: rgba(245, 246, 130, 0.55) !important; }
+  .sq.in-check { background: radial-gradient(circle, rgba(239,68,68,0.9) 0%, rgba(239,68,68,0) 75%) !important; }
+
+  .piece {
+    font-size: 34px;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .piece.w {
+    color: #ffffff;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000, 1px 1px 0 #000, -1px -1px 0 #000;
+  }
+  .piece.b {
+    color: #18181b;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.45), 1px 1px 0 rgba(255,255,255,0.25);
+  }
+  .dot {
+    width: 28%;
+    height: 28%;
+    background: rgba(0,0,0,0.26);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .cap-ring {
+    position: absolute;
+    inset: 4px;
+    border: 4px solid rgba(0,0,0,0.28);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .coord-f {
+    position: absolute;
+    bottom: 1px;
+    right: 3px;
+    font-size: 9px;
+    font-weight: 800;
+    opacity: 0.75;
+    pointer-events: none;
+  }
+  .coord-r {
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    font-size: 9px;
+    font-weight: 800;
+    opacity: 0.75;
+    pointer-events: none;
+  }
+  .sq.light .coord-f, .sq.light .coord-r { color: var(--sq-dark); }
+  .sq.dark .coord-f, .sq.dark .coord-r { color: var(--sq-light); }
+
+  /* Значок оценки на клетке */
+  .move-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    z-index: 5;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 1px 4px;
+    border-radius: 8px;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  }
+  #arrow-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  /* Правая колонка */
+  .side-col {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card {
+    background: #1b1a18;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .badge-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 11px;
+    color: #fff;
+  }
+  .moves-list {
+    max-height: 210px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .move-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background: var(--panel-alt);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .move-row.active { outline: 2px solid var(--accent); }
+
+  /* Модальные окна */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 12px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 420px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .modal h3 { font-size: 16px; display: flex; justify-content: space-between; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #191816;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  #incoming-banner {
+    display: none;
+    width: 100%;
+    max-width: 960px;
+    background: #1e3a8a;
+    border: 1px solid #60a5fa;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<!-- Уведомление о вызове от друга -->
+<div id="incoming-banner">
+  <span id="incoming-text">⚔️ Друг вызывает вас на партию!</span>
+  <div style="display:flex;gap:6px;">
+    <button class="btn-green" onclick="acceptChallenge()">✓ Принять вызов</button>
+    <button class="btn-red" onclick="declineChallenge()">✕</button>
+  </div>
+</div>
+
+<!-- Шапка ChampionShah -->
+<header class="topbar">
+  <div class="brand">👑 ChampionShah <span>БЕЗ VPN</span></div>
+  <div class="nav-btns">
+    <button class="btn-green" onclick="setGameMode('bot')">🤖 С Ботом</button>
+    <button onclick="setGameMode('local')">📱 На 1 тел.</button>
+    <button class="btn-blue" onclick="openModal('friendsModal')">👥 Друзья / Онлайн</button>
+    <button class="btn-gold" id="accountBtn" onclick="openModal('authModal')">🔑 Войти</button>
+    <button onclick="openModal('serverModal')" title="Настройка базы Firebase">⚙️ Сервер</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- Левая часть: доска и настройки бота -->
+  <section class="board-col">
+    <!-- Настройки Бота -->
+    <div class="bot-bar" id="botSettingsBar">
+      <div>
+        Уровень:
+        <select id="botLevel" onchange="updateBotLabel()">
+          <option value="1">Новичок (400)</option>
+          <option value="2" selected>Любитель (1000)</option>
+          <option value="3">Клубный (1450)</option>
+          <option value="4">Мастер (1850)</option>
+        </select>
+      </div>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="instantEvalToggle" checked> ⚡ Оценка сразу
+      </label>
+      <div>
+        ↩️ Возврат:
+        <select id="takebackMode">
+          <option value="mistake" selected>При ошибке (?/??)</option>
+          <option value="always">Каждый ход</option>
+          <option value="button">Кнопкой</option>
+          <option value="off">Выкл</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Верхний игрок -->
+    <div class="player-bar">
+      <div class="p-info">
+        <span id="topIcon">🤖</span>
+        <span id="topName">Бот Любитель (1000)</span>
+      </div>
+      <div class="clock" id="topClock">10:00</div>
+    </div>
+
+    <!-- Доска -->
+    <div id="board-wrap">
+      <div id="chessboard"></div>
+      <svg id="arrow-svg" viewBox="0 0 100 100">
+        <defs>
+          <marker id="ah-green" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto">
+            <polygon points="0 0, 4 2, 0 4" fill="#22c55e"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+
+    <!-- Нижний игрок -->
+    <div class="player-bar">
+      <div class="p-info">
+        <span>👤</span>
+        <span id="bottomName">Вы (Белые)</span>
+      </div>
+      <div class="clock" id="bottomClock">10:00</div>
+    </div>
+  </section>
+
+  <!-- Правая часть: статус, мгновенный вердикт и Отчёт о партии -->
+  <section class="side-col">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <strong id="statusTitle" style="font-size:15px;">🟢 Ход Белых</strong>
+      <span id="modeBadge" style="font-size:11px;color:var(--muted);">Режим: С Ботом</span>
+    </div>
+
+    <!-- Кнопки подтверждения / возврата хода (при игре с Ботом) -->
+    <div id="takebackDecisionBar" class="card" style="display:none;border-color:var(--gold);background:#2b2313;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;" id="takebackPromptText">
+        Вы сделали ход. Хотите переходить или оставить ход?
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-gold" style="flex:1;" onclick="confirmTakeback()">↩️ Вернуть ход</button>
+        <button class="btn-green" style="flex:1;" onclick="confirmKeepMove()">▶️ Оставить ход (ход бота)</button>
+      </div>
+    </div>
+
+    <!-- Карточка объяснения хода (показывается сразу при включённой опции или в Отчёте) -->
+    <div id="coachCard" class="card" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span id="coachBadge" class="badge-pill" style="background:#22c55e;">★ Лучший ход</span>
+        <span id="coachEval" style="font-size:12px;font-weight:800;color:var(--muted);">Оценка: +0.2</span>
+      </div>
+      <div id="coachText" style="font-size:13px;line-height:1.45;color:#e5e7eb;"></div>
+    </div>
+
+    <!-- Скрытый блок во время живой игры -->
+    <div id="hiddenMovesNotice" class="card" style="text-align:center;padding:16px;">
+      <div style="font-size:22px;margin-bottom:4px;">🔒</div>
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px;">Список ходов и общий отчёт скрыты во время партии</div>
+      <div style="font-size:12px;color:var(--muted);">
+        Завершите партию или нажмите кнопку ниже, чтобы открыть полный <b>Бесплатный Отчёт о партии (как в Chess.com)</b> с точностью и разбором каждого хода.
+      </div>
+    </div>
+
+    <!-- Полный Отчёт о партии (открывается после игры) -->
+    <div id="reportSection" style="display:none;flex-direction:column;gap:8px;">
+      <div class="card">
+        <div style="font-weight:800;font-size:13px;margin-bottom:8px;text-align:center;">📊 Точность игры (CAPS2 Chess.com)</div>
+        <div style="display:flex;justify-content:space-around;font-size:16px;font-weight:900;">
+          <div>⬜ Белые: <span id="accWhite" style="color:var(--accent);">—%</span></div>
+          <div>⬛ Чёрные: <span id="accBlack" style="color:var(--accent);">—%</span></div>
+        </div>
+        <div id="countsGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;margin-top:8px;font-size:11px;"></div>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--muted);">Нажми на любой ход, чтобы увидеть разбор и лучший ход на доске:</div>
+      <div class="moves-list" id="movesList"></div>
+    </div>
+
+    <!-- Кнопки управления партией -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;">
+      <button class="btn-green" style="flex:1;" onclick="openFullReport()">📊 Завершить и открыть Отчёт</button>
+      <button onclick="manualUndo()" id="undoBtn">↩️ Ход назад</button>
+      <button onclick="flipBoard()">🔄 Повернуть</button>
+      <button class="btn-blue" onclick="restartGame()">➕ Новая игра</button>
+    </div>
+  </section>
+</main>
+
+<!-- Модальное окно: Аккаунт (Логин и Пароль) -->
+<div class="modal-bg" id="authModal">
+  <div class="modal">
+    <h3><span>🔑 Аккаунт ChampionShah</span> <button onclick="closeModal('authModal')">✕</button></h3>
+    <div class="field">
+      <label>Логин (без пробелов, например: shabu):</label>
+      <input type="text" id="authLogin" placeholder="Введите логин">
+    </div>
+    <div class="field">
+      <label>Пароль:</label>
+      <input type="password" id="authPass" placeholder="Введите пароль">
+    </div>
+    <div id="authStatus" style="font-size:12px;color:var(--gold);"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-green" style="flex:1;" onclick="handleAuth('login')">Войти</button>
+      <button class="btn-gold" style="flex:1;" onclick="handleAuth('register')">Создать аккаунт</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно: Друзья и Онлайн-вызов -->
+<div class="modal-bg" id="friendsModal">
+  <div class="modal">
+    <h3><span>👥 Друзья и Онлайн</span> <button onclick="closeModal('friendsModal')">✕</button></h3>
+    <div style="font-size:12px;color:var(--muted);">
+      Ваш логин: <strong id="myLoginLabel" style="color:#fff;">Не выполнен вход</strong>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <input type="text" id="friendLoginInput" placeholder="Логин друга (например: паша)" style="flex:1;">
+      <button class="btn-green" onclick="addFriendByLogin()">➕ Добавить</button>
+    </div>
+    <div id="friendsStatus" style="font-size:12px;color:var(--gold);"></div>
+    <div style="font-size:12px;font-weight:700;">Список друзей:</div>
+    <div id="friendsListContainer" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;"></div>
+    <hr style="border-color:var(--border);">
+    <div style="font-size:12px;font-weight:700;">Быстрый вход по коду комнаты:</div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn-blue" onclick="createRoomByCode()">Создать код</button>
+      <input type="text" id="joinCodeInput" placeholder="Код (4 цифры)" style="width:110px;">
+      <button class="btn-green" onclick="joinRoomByCode()">Войти ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно: Настройка Firebase URL -->
+<div class="modal-bg" id="serverModal">
+  <div class="modal">
+    <h3><span>⚙️ База сервера (Firebase)</span> <button onclick="closeModal('serverModal')">✕</button></h3>
+    <div style="font-size:12px;color:var(--muted);line-height:1.4;">
+      Чтобы аккаунты и онлайн-ходы передавались между разными телефонами (iPhone и Android) без VPN, вставь ссылку на свою бесплатную Realtime Database из Firebase:
+    </div>
+    <input type="text" id="firebaseUrlInput" placeholder="https://...-default-rtdb.firebaseio.com">
+    <button class="btn-green" onclick="saveFirebaseUrl()">💾 Сохранить ссылку сервера</button>
+    <div id="serverStatus" style="font-size:12px;color:var(--accent);"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   1. НАСТРОЙКА ОБЛАЧНОЙ БАЗЫ (FIREBASE REALTIME DATABASE)
+   Вставь свою ссылку из Firebase ниже между кавычками,
+   или через кнопку "⚙️ Сервер" прямо на сайте!
+   ========================================================= */
+const DEFAULT_FIREBASE_URL = ""; 
+
+let firebaseUrl = (localStorage.getItem("cs_firebase_url") || DEFAULT_FIREBASE_URL).replace(/\/$/, "");
+document.getElementById("firebaseUrlInput").value = firebaseUrl;
+
+function saveFirebaseUrl() {
+  const val = document.getElementById("firebaseUrlInput").value.trim().replace(/\/$/, "");
+  firebaseUrl = val;
+  localStorage.setItem("cs_firebase_url", val);
+  document.getElementById("serverStatus").textContent = val
+    ? "✅ Сервер подключён! Онлайн и друзья работают между устройствами."
+    : "⚠️ Ссылка очищена (включён локальный режим).";
+}
+
+async function dbGet(path) {
+  if (!firebaseUrl) {
+    const raw = localStorage.getItem("local_db_" + path);
+    return raw ? JSON.parse(raw) : null;
+  }
+  try {
+    const r = await fetch(`${firebaseUrl}/${path}.json`);
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+async function dbSet(path, data) {
+  localStorage.setItem("local_db_" + path, JSON.stringify(data));
+  if (!firebaseUrl) return true;
+  try {
+    await fetch(`${firebaseUrl}/${path}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+/* =========================================================
+   2. АККАУНТЫ И ДРУЗЬЯ ПО ЛОГИНУ
+   ========================================================= */
+let currentUser = JSON.parse(localStorage.getItem("cs_user") || "null");
+
+function updateAuthUI() {
+  const btn = document.getElementById("accountBtn");
+  const lbl = document.getElementById("myLoginLabel");
+  if (currentUser) {
+    btn.textContent = "👤 @" + currentUser.login;
+    lbl.textContent = "@" + currentUser.login;
+    renderFriendsList();
+  } else {
+    btn.textContent = "🔑 Войти";
+    lbl.textContent = "Не выполнен вход";
+  }
+}
+
+async function handleAuth(type) {
+  const login = document.getElementById("authLogin").value.trim().toLowerCase().replace(/[^a-zа-яё0-9_]/gi, "");
+  const pass = document.getElementById("authPass").value.trim();
+  const st = document.getElementById("authStatus");
+  if (login.length < 2 || pass.length < 2) {
+    st.textContent = "Введите логин и пароль (минимум 2 символа).";
+    return;
+  }
+  st.textContent = "Загрузка...";
+  const existing = await dbGet(`users/${login}`);
+  if (type === "register") {
+    if (existing && existing.pass) {
+      st.textContent = "Этот логин уже занят! Выберите другой или нажмите Войти.";
+      return;
+    }
+    const newUser = { login, pass, friends: [] };
+    await dbSet(`users/${login}`, newUser);
+    currentUser = newUser;
+    localStorage.setItem("cs_user", JSON.stringify(newUser));
+    st.textContent = "✅ Аккаунт создан!";
+    updateAuthUI();
+    setTimeout(() => closeModal("authModal"), 600);
+  } else {
+    if (!existing || existing.pass !== pass) {
+      st.textContent = "❌ Неверный логин или пароль.";
+      return;
+    }
+    currentUser = existing;
+    if (!currentUser.friends) currentUser.friends = [];
+    localStorage.setItem("cs_user", JSON.stringify(currentUser));
+    st.textContent = "✅ Вход выполнен!";
+    updateAuthUI();
+    setTimeout(() => closeModal("authModal"), 500);
+  }
+}
+
+async function addFriendByLogin() {
+  if (!currentUser) {
+    document.getElementById("friendsStatus").textContent = "Сначала войдите в аккаунт (кнопка 🔑 Войти)!";
+    return;
+  }
+  const fLogin = document.getElementById("friendLoginInput").value.trim().toLowerCase();
+  if (!fLogin || fLogin === currentUser.login) return;
+  const fUser = await dbGet(`users/${fLogin}`);
+  if (!fUser && firebaseUrl) {
+    document.getElementById("friendsStatus").textContent = `Пользователь @${fLogin} ещё не зарегистрировался.`;
+    return;
+  }
+  if (!currentUser.friends) currentUser.friends = [];
+  if (!currentUser.friends.includes(fLogin)) {
+    currentUser.friends.push(fLogin);
+    localStorage.setItem("cs_user", JSON.stringify(currentUser));
+    await dbSet(`users/${currentUser.login}`, currentUser);
+  }
+  document.getElementById("friendLoginInput").value = "";
+  document.getElementById("friendsStatus").textContent = `✅ @${fLogin} добавлен в друзья!`;
+  renderFriendsList();
+}
+
+function renderFriendsList() {
+  const box = document.getElementById("friendsListContainer");
+  box.innerHTML = "";
+  const list = (currentUser && currentUser.friends) ? currentUser.friends : [];
+  if (!list.length) {
+    box.innerHTML = `<div style="font-size:12px;color:var(--muted);">Пока нет друзей. Введите логин друга выше!</div>`;
+    return;
+  }
+  list.forEach(f => {
+    const div = document.createElement("div");
+    div.className = "friend-item";
+    div.innerHTML = `
+      <span>👤 <b>@${f}</b></span>
+      <button class="btn-green" onclick="challengeFriend('${f}')">⚔️ Вызвать на игру</button>
+    `;
+    box.appendChild(div);
+  });
+}
+
+/* =========================================================
+   3. ОНЛАЙН-ВЫЗОВЫ И СИНХРОНИЗАЦИЯ ПАРТИИ
+   ========================================================= */
+let onlineRoomId = null;
+let myOnlineColor = "w";
+let lastSyncedMoveCount = 0;
+let pendingChallenge = null;
+
+async function challengeFriend(friendLogin) {
+  const roomId = "G" + Math.floor(1000 + Math.random() * 9000);
+  const fromLogin = currentUser ? currentUser.login : "Игрок";
+  await dbSet(`games/${roomId}`, {
+    white: fromLogin,
+    black: friendLogin,
+    moves: [],
+    updatedAt: Date.now()
+  });
+  await dbSet(`challenges/${friendLogin}`, {
+    from: fromLogin,
+    roomId: roomId,
+    ts: Date.now()
+  });
+  startOnlineRoom(roomId, "w", `@${friendLogin}`);
+  closeModal("friendsModal");
+}
+
+async function createRoomByCode() {
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  const fromLogin = currentUser ? currentUser.login : "Белые";
+  await dbSet(`games/${code}`, {
+    white: fromLogin,
+    black: "Ожидание...",
+    moves: [],
+    updatedAt: Date.now()
+  });
+  document.getElementById("joinCodeInput").value = code;
+  document.getElementById("friendsStatus").textContent = `Код комнаты: ${code}. Отправьте его другу!`;
+  startOnlineRoom(code, "w", `Комната #${code}`);
+}
+
+async function joinRoomByCode() {
+  const code = document.getElementById("joinCodeInput").value.trim();
+  if (!code) return;
+  const g = await dbGet(`games/${code}`);
+  if (!g) {
+    document.getElementById("friendsStatus").textContent = "Комната не найдена.";
+    return;
+  }
+  const myName = currentUser ? currentUser.login : "Чёрные";
+  g.black = myName;
+  await dbSet(`games/${code}`, g);
+  startOnlineRoom(code, "b", `@${g.white}`);
+  closeModal("friendsModal");
+}
+
+function startOnlineRoom(roomId, color, oppLabel) {
+  gameMode = "online";
+  onlineRoomId = roomId;
+  myOnlineColor = color;
+  flipped = (color === "b");
+  restartGame(true);
+  document.getElementById("botSettingsBar").style.display = "none";
+  document.getElementById("modeBadge").textContent = `🌐 Онлайн (#${roomId})`;
+  document.getElementById("topName").textContent = oppLabel;
+  document.getElementById("bottomName").textContent = currentUser ? `@${currentUser.login}` : (color === "w" ? "Вы (Белые)" : "Вы (Чёрные)");
+  renderBoard();
+}
+
+async function acceptChallenge() {
+  if (!pendingChallenge) return;
+  const { roomId, from } = pendingChallenge;
+  await dbSet(`challenges/${currentUser.login}`, null);
+  document.getElementById("incoming-banner").style.display = "none";
+  startOnlineRoom(roomId, "b", `@${from}`);
+}
+
+async function declineChallenge() {
+  if (currentUser) await dbSet(`challenges/${currentUser.login}`, null);
+  document.getElementById("incoming-banner").style.display = "none";
+  pendingChallenge = null;
+}
+
+// Фоновый опрос вызовов и ходов соперника (каждые 1.2 сек)
+setInterval(async () => {
+  if (currentUser) {
+    const ch = await dbGet(`challenges/${currentUser.login}`);
+    if (ch && ch.roomId && Date.now() - ch.ts < 120000 && onlineRoomId !== ch.roomId) {
+      pendingChallenge = ch;
+      document.getElementById("incoming-text").textContent = `⚔️ @${ch.from} вызывает вас на онлайн-партию!`;
+      document.getElementById("incoming-banner").style.display = "flex";
+    }
+  }
+  if (gameMode === "online" && onlineRoomId) {
+    const g = await dbGet(`games/${onlineRoomId}`);
+    if (g && Array.isArray(g.moves) && g.moves.length > moveHistory.length) {
+      const nextMove = g.moves[moveHistory.length];
+      if (nextMove) {
+        applyMoveInternal(nextMove, false);
+        renderBoard();
+      }
+    }
+  }
+}, 1200);
+
+/* =========================================================
+   4. ШАХМАТНЫЙ ДВИЖОК, ПРАВИЛА И УМНЫЙ БОТ (БЕЗ ЛАДЬИ ТУДА-СЮДА)
+   ========================================================= */
+const PIECES = {
+  wP: "♙", wN: "♘", wB: "♗", wR: "♖", wQ: "♕", wK: "♔",
+  bP: "♟", bN: "♞", bB: "♝", bR: "♜", bQ: "♛", bK: "♚"
+};
+const VALS = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 20000 };
+const FILES = ["a","b","c","d","e","f","g","h"];
+
+let board = [];
+let turn = "w";
+let selectedSq = null;
+let legalMovesForSelected = [];
+let moveHistory = [];
+let positionCounts = {};
+let flipped = false;
+let gameMode = "bot"; // 'bot' | 'local' | 'online'
+let gameOver = false;
+let waitingTakebackChoice = false;
+let reviewIndex = null;
+
+function initStartBoard() {
+  const back = ["R","N","B","Q","K","B","N","R"];
+  board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  for (let c = 0; c < 8; c++) {
+    board[0][c] = { color: "b", type: back[c], moved: false };
+    board[1][c] = { color: "b", type: "P", moved: false };
+    board[6][c] = { color: "w", type: "P", moved: false };
+    board[7][c] = { color: "w", type: back[c], moved: false };
+  }
+  turn = "w";
+  selectedSq = null;
+  legalMovesForSelected = [];
+  moveHistory = [];
+  positionCounts = {};
+  gameOver = false;
+  waitingTakebackChoice = false;
+  reviewIndex = null;
+}
+
+function cloneBoard(b) {
+  return b.map(row => row.map(cell => cell ? { ...cell } : null));
+}
+
+function getBoardHash(b, t) {
+  let s = t;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = b[r][c];
+      s += p ? (p.color + p.type) : ".";
+    }
+  }
+  return s;
+}
+
+function isInside(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+
+function getPseudoMoves(b, color) {
+  const moves = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = b[r][c];
+      if (!p || p.color !== color) continue;
+      if (p.type === "P") {
+        const dir = color === "w" ? -1 : 1;
+        const startRow = color === "w" ? 6 : 1;
+        if (isInside(r + dir, c) && !b[r + dir][c]) {
+          moves.push({ fr: r, fc: c, tr: r + dir, tc: c });
+          if (r === startRow && !b[r + 2 * dir][c]) {
+            moves.push({ fr: r, fc: c, tr: r + 2 * dir, tc: c });
+          }
+        }
+        for (const dc of [-1, 1]) {
+          if (isInside(r + dir, c + dc)) {
+            const target = b[r + dir][c + dc];
+            if (target && target.color !== color) {
+              moves.push({ fr: r, fc: c, tr: r + dir, tc: c + dc });
+            }
+          }
+        }
+      } else if (p.type === "N") {
+        for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+          const nr = r + dr, nc = c + dc;
+          if (isInside(nr, nc) && (!b[nr][nc] || b[nr][nc].color !== color)) {
+            moves.push({ fr: r, fc: c, tr: nr, tc: nc });
+          }
+        }
+      } else if (p.type === "K") {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (!dr && !dc) continue;
+            const nr = r + dr, nc = c + dc;
+            if (isInside(nr, nc) && (!b[nr][nc] || b[nr][nc].color !== color)) {
+              moves.push({ fr: r, fc: c, tr: nr, tc: nc });
+            }
+          }
+        }
+        // Рокировка
+        if (!p.moved) {
+          const row = color === "w" ? 7 : 0;
+          if (r === row && c === 4) {
+            const rK = b[row][7];
+            if (rK && rK.type === "R" && !rK.moved && !b[row][5] && !b[row][6]) {
+              moves.push({ fr: row, fc: 4, tr: row, tc: 6, castle: "K" });
+            }
+            const rQ = b[row][0];
+            if (rQ && rQ.type === "R" && !rQ.moved && !b[row][1] && !b[row][2] && !b[row][3]) {
+              moves.push({ fr: row, fc: 4, tr: row, tc: 2, castle: "Q" });
+            }
+          }
+        }
+      } else {
+        const dirs = [];
+        if (p.type === "B" || p.type === "Q") dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+        if (p.type === "R" || p.type === "Q") dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+        for (const [dr, dc] of dirs) {
+          let nr = r + dr, nc = c + dc;
+          while (isInside(nr, nc)) {
+            if (!b[nr][nc]) {
+              moves.push({ fr: r, fc: c, tr: nr, tc: nc });
+            } else {
+              if (b[nr][nc].color !== color) moves.push({ fr: r, fc: c, tr: nr, tc: nc });
+              break;
+            }
+            nr += dr; nc += dc;
+          }
+        }
+      }
+    }
+  }
+  return moves;
+}
+
+function makeMoveOnBoard(b, m) {
+  const nb = cloneBoard(b);
+  const p = nb[m.fr][m.fc];
+  nb[m.tr][m.tc] = { ...p, moved: true };
+  nb[m.fr][m.fc] = null;
+  if (p.type === "P" && (m.tr === 0 || m.tr === 7)) {
+    nb[m.tr][m.tc].type = "Q";
+  }
+  if (m.castle === "K") {
+    nb[m.tr][5] = { ...nb[m.tr][7], moved: true };
+    nb[m.tr][7] = null;
+  } else if (m.castle === "Q") {
+    nb[m.tr][3] = { ...nb[m.tr][0], moved: true };
+    nb[m.tr][0] = null;
+  }
+  return nb;
+}
+
+function isKingInCheck(b, color) {
+  let kr = -1, kc = -1;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = b[r][c];
+      if (p && p.color === color && p.type === "K") { kr = r; kc = c; }
+    }
+  }
+  if (kr === -1) return true;
+  const opp = color === "w" ? "b" : "w";
+  const oppMoves = getPseudoMoves(b, opp);
+  return oppMoves.some(m => m.tr === kr && m.tc === kc);
+}
+
+function getLegalMoves(b, color) {
+  const pseudo = getPseudoMoves(b, color);
+  return pseudo.filter(m => {
+    if (m.castle && isKingInCheck(b, color)) return false;
+    const nb = makeMoveOnBoard(b, m);
+    return !isKingInCheck(nb, color);
+  });
+}
+
+// Позиционная оценка (чтобы бот развивал лёгкие фигуры и НЕ ходил ладьёй туда-обратно)
+function evaluateBoard(b) {
+  let score = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = b[r][c];
+      if (!p) continue;
+      let v = VALS[p.type];
+      const centerBonus = (3.5 - Math.abs(3.5 - c)) * 6 + (3.5 - Math.abs(3.5 - r)) * 6;
+      if (p.type === "N" || p.type === "B") v += centerBonus * 1.4;
+      if (p.type === "P") {
+        const adv = p.color === "w" ? (6 - r) : (r - 1);
+        v += adv * 8 + (c >= 2 && c <= 5 ? 6 : 0);
+      }
+      // Штраф за раннее дёргание ладьи
+      if (p.type === "R" && p.moved && moveHistory.length < 16) {
+        v -= 35;
+      }
+      score += (p.color === "w" ? v : -v);
+    }
+  }
+  return score; // в сантипешках со стороны Белых
+}
+
+function findBestMoves(b, color, depth = 2) {
+  const legal = getLegalMoves(b, color);
+  if (!legal.length) return [];
+  const sign = color === "w" ? 1 : -1;
+
+  const scored = legal.map(m => {
+    const nb = makeMoveOnBoard(b, m);
+    const hash = getBoardHash(nb, color === "w" ? "b" : "w");
+    const repPenalty = (positionCounts[hash] || 0) * 220; // Запрет боту ходить туда-обратно
+
+    let val;
+    if (depth <= 1) {
+      val = evaluateBoard(nb) * sign - repPenalty;
+    } else {
+      const oppColor = color === "w" ? "b" : "w";
+      const oppMoves = getLegalMoves(nb, oppColor);
+      if (!oppMoves.length) {
+        val = isKingInCheck(nb, oppColor) ? 15000 : 0;
+      } else {
+        let worstForUs = Infinity;
+        for (const om of oppMoves) {
+          const nnb = makeMoveOnBoard(nb, om);
+          const sc = evaluateBoard(nnb) * sign;
+          if (sc < worstForUs) worstForUs = sc;
+        }
+        val = worstForUs - repPenalty;
+      }
+    }
+    return { move: m, cp: val };
+  });
+
+  scored.sort((a, b) => b.cp - a.cp);
+  return scored;
+}
+
+/* =========================================================
+   5. ОЦЕНКА ХОДА CHESS.COM (CAPS2) + ПОДРОБНОЕ ОБЪЯСНЕНИЕ
+   ========================================================= */
+function cpToWinPct(cp) {
+  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+}
+
+function sqName(r, c) { return FILES[c] + (8 - r); }
+
+function moveToSAN(b, m) {
+  if (m.castle === "K") return "O-O";
+  if (m.castle === "Q") return "O-O-O";
+  const p = b[m.fr][m.fc];
+  const cap = b[m.tr][m.tc];
+  const dest = sqName(m.tr, m.tc);
+  if (p.type === "P") {
+    return (cap ? FILES[m.fc] + "x" : "") + dest;
+  }
+  const names = { N: "К", B: "С", R: "Л", Q: "Ф", K: "Кр" };
+  return (names[p.type] || p.type) + (cap ? "x" : "") + dest;
+}
+
+const CATEGORIES = {
+  brilliant: { label: "!! Бриллиантовый", color: "#14b8a6", badge: "!!" },
+  great:     { label: "! Сильный ход",    color: "#3b82f6", badge: "!" },
+  best:      { label: "★ Лучший ход",     color: "#22c55e", badge: "★" },
+  excellent: { label: "👍 Отличный",      color: "#4ade80", badge: "👍" },
+  good:      { label: "✓ Хороший",        color: "#84cc16", badge: "✓" },
+  book:      { label: "📖 Теория",        color: "#a87954", badge: "📖" },
+  inaccuracy:{ label: "?! Неточность",    color: "#eab308", badge: "?!" },
+  mistake:   { label: "? Ошибка",         color: "#f97316", badge: "?" },
+  miss:      { label: "✖ Упущенный шанс", color: "#fb7185", badge: "✖" },
+  blunder:   { label: "?? Зевок",         color: "#ef4444", badge: "??" }
+};
+
+function analyzeMoveWithExplanation(boardBefore, move, plyIndex) {
+  const moverColor = boardBefore[move.fr][move.fc].color;
+  const candidates = findBestMoves(boardBefore, moverColor, 2);
+  const best = candidates[0] || { move, cp: 0 };
+  const second = candidates[1] || best;
+
+  const found = candidates.find(x =>
+    x.move.fr === move.fr && x.move.fc === move.fc && x.move.tr === move.tr && x.move.tc === move.tc
+  );
+  const playedCp = found ? found.cp : (best.cp - 150);
+
+  const winBest = cpToWinPct(best.cp);
+  const winPlayed = cpToWinPct(playedCp);
+  const winLoss = Math.max(0, winBest - winPlayed);
+  const accuracy = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * winLoss) - 3.1669));
+
+  const piece = boardBefore[move.fr][move.fc];
+  const captured = boardBefore[move.tr][move.tc];
+  const san = moveToSAN(boardBefore, move);
+  const bestSan = moveToSAN(boardBefore, best.move);
+  const isBest = (move.fr === best.move.fr && move.fc === best.move.fc && move.tr === best.move.tr && move.tc === best.move.tc);
+
+  // Определяем категорию Chess.com
+  let catKey = "good";
+  if (plyIndex < 6 && winLoss < 4) {
+    catKey = "book";
+  } else if (isBest) {
+    if (best.cp - second.cp > 160 && !captured && piece.type !== "P") {
+      catKey = "brilliant";
+    } else if (best.cp - second.cp > 110) {
+      catKey = "great";
+    } else {
+      catKey = "best";
+    }
+  } else if (winLoss <= 3) {
+    catKey = "excellent";
+  } else if (winLoss <= 8) {
+    catKey = "good";
+  } else if (winLoss <= 15) {
+    catKey = "inaccuracy";
+  } else if (winBest >= 74 && winLoss > 18 && captured === null && boardBefore[best.move.tr][best.move.tc]) {
+    catKey = "miss";
+  } else if (winLoss <= 26) {
+    catKey = "mistake";
+  } else {
+    catKey = "blunder";
+  }
+
+  // Строим понятное объяснение "ПОЧЕМУ ДАНА ТАКАЯ ОЦЕНКА"
+  const pNames = { P: "пешкой", N: "конём", B: "слоном", R: "ладьёй", Q: "ферзём", K: "королём" };
+  const capNames = { P: "пешку", N: "коня", B: "слона", R: "ладью", Q: "ферзя", K: "короля" };
+
+  let actionDesc = `Вы сходили ${pNames[piece.type]} на ${sqName(move.tr, move.tc)} (${san})`;
+  if (move.castle) actionDesc = `Вы сделали рокировку (${san}) и спрятали короля в безопасность`;
+  else if (captured) actionDesc = `Вы забрали ${capNames[captured.type]} соперника на поле ${sqName(move.tr, move.tc)} (${san})`;
+  else if ((move.tr === 3 || move.tr === 4) && (move.tc === 3 || move.tc === 4)) {
+    actionDesc += ` и заняли важное центральное поле`;
+  }
+
+  // Проверяем, какой ответ есть у соперника после этого хода
+  const boardAfter = makeMoveOnBoard(boardBefore, move);
+  const oppColor = moverColor === "w" ? "b" : "w";
+  const oppReplies = findBestMoves(boardAfter, oppColor, 1);
+  const oppBest = oppReplies[0];
+  let threatText = "";
+  if (oppBest && boardAfter[oppBest.move.tr][oppBest.move.tc]) {
+    const victim = boardAfter[oppBest.move.tr][oppBest.move.tc];
+    const replySan = moveToSAN(boardAfter, oppBest.move);
+    threatText = ` В ответ соперник может сыграть <b>${replySan}</b> и забрать вашу фигуру (${capNames[victim.type]} на ${sqName(oppBest.move.tr, oppBest.move.tc)})!`;
+  }
+
+  let reason = "";
+  if (catKey === "book") {
+    reason = `${actionDesc}. Это проверенный теоретический ход дебюта, который развивает позицию без потери темпа.`;
+  } else if (catKey === "brilliant" || catKey === "great" || catKey === "best") {
+    reason = `${actionDesc}. Это сильнейшее решение в позиции! Вы получаете максимум инициативы и не оставляете сопернику слабостей.`;
+  } else if (catKey === "excellent" || catKey === "good") {
+    reason = `${actionDesc}. Крепкий ход (потеря точности минимальна). Чуть точнее было сыграть <b>${bestSan}</b>, но ваша позиция остаётся надёжной.`;
+  } else {
+    const bestTarget = boardBefore[best.move.tr][best.move.tc];
+    const whyBest = bestTarget
+      ? `забрать ${capNames[bestTarget.type]} ходом <b>${bestSan}</b>`
+      : `сыграть <b>${bestSan}</b> для защиты и контроля центра`;
+    reason = `${actionDesc}, но этот ход теряет <b>${winLoss.toFixed(0)}%</b> шансов на победу.${threatText} Гораздо сильнее было ${whyBest} (зелёная стрелка на доске).`;
+  }
+
+  return {
+    san,
+    bestSan,
+    bestMove: best.move,
+    catKey,
+    cat: CATEGORIES[catKey],
+    cpWhite: moverColor === "w" ? playedCp : -playedCp,
+    accuracy,
+    reason
+  };
+}
+
+/* =========================================================
+   6. ОТРИСОВКА ДОСКИ И МГНОВЕННЫЙ ХОД (0 МС ЗАДЕРЖКИ)
+   ========================================================= */
+function resizeBoard() {
+  const wrap = document.getElementById("board-wrap");
+  const w = Math.min(window.innerWidth - 24, 400);
+  const sz = Math.max(288, Math.floor(w / 8) * 8);
+  wrap.style.width = sz + "px";
+  wrap.style.height = sz + "px";
+}
+window.addEventListener("resize", resizeBoard);
+
+function renderBoard() {
+  resizeBoard();
+  const boardEl = document.getElementById("chessboard");
+  boardEl.innerHTML = "";
+
+  const displayState = (reviewIndex !== null && moveHistory[reviewIndex])
+    ? moveHistory[reviewIndex].boardAfter
+    : board;
+  const activeMove = (reviewIndex !== null && moveHistory[reviewIndex])
+    ? moveHistory[reviewIndex]
+    : moveHistory[moveHistory.length - 1];
+
+  for (let dr = 0; dr < 8; dr++) {
+    for (let dc = 0; dc < 8; dc++) {
+      const r = flipped ? 7 - dr : dr;
+      const c = flipped ? 7 - dc : dc;
+      const sq = document.createElement("div");
+      const isLight = (r + c) % 2 === 0;
+      sq.className = "sq " + (isLight ? "light" : "dark");
+
+      if (selectedSq && selectedSq.r === r && selectedSq.c === c) sq.classList.add("selected");
+      if (activeMove && ((activeMove.move.fr === r && activeMove.move.fc === c) || (activeMove.move.tr === r && activeMove.move.tc === c))) {
+        sq.classList.add("last-move");
+      }
+
+      const p = displayState[r][c];
+      if (p) {
+        if (p.type === "K" && isKingInCheck(displayState, p.color)) sq.classList.add("in-check");
+        const span = document.createElement("span");
+        span.className = "piece " + p.color;
+        span.textContent = PIECES[p.color + p.type];
+        sq.appendChild(span);
+      }
+
+      // Подсказки легальных ходов
+      const lm = legalMovesForSelected.find(m => m.tr === r && m.tc === c);
+      if (lm) {
+        const mark = document.createElement("div");
+        mark.className = p ? "cap-ring" : "dot";
+        sq.appendChild(mark);
+      }
+
+      // Значок оценки на конечной клетке хода (если открыт Отчёт или включена "Оценка сразу")
+      const showLiveEval = (gameMode === "bot" && document.getElementById("instantEvalToggle").checked);
+      if (activeMove && activeMove.analysis && activeMove.move.tr === r && activeMove.move.tc === c && (reviewIndex !== null || gameOver || showLiveEval)) {
+        const bdg = document.createElement("div");
+        bdg.className = "move-badge";
+        bdg.style.background = activeMove.analysis.cat.color;
+        bdg.textContent = activeMove.analysis.cat.badge;
+        sq.appendChild(bdg);
+      }
+
+      if (dc === 0) {
+        const rl = document.createElement("span");
+        rl.className = "coord-r";
+        rl.textContent = 8 - r;
+        sq.appendChild(rl);
+      }
+      if (dr === 7) {
+        const fl = document.createElement("span");
+        fl.className = "coord-f";
+        fl.textContent = FILES[c];
+        sq.appendChild(fl);
+      }
+
+      sq.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        onSquareTap(r, c);
+      });
+      boardEl.appendChild(sq);
+    }
+  }
+  drawBestMoveArrow(activeMove);
+}
+
+function drawBestMoveArrow(record) {
+  const svg = document.getElementById("arrow-svg");
+  svg.querySelectorAll("line").forEach(el => el.remove());
+  const showLiveEval = (gameMode === "bot" && document.getElementById("instantEvalToggle").checked);
+  if (!record || !record.analysis || (!gameOver && reviewIndex === null && !showLiveEval)) return;
+
+  const bm = record.analysis.bestMove;
+  if (!bm || (bm.fr === record.move.fr && bm.fc === record.move.fc && bm.tr === record.move.tr && bm.tc === record.move.tc)) return;
+
+  const toCoord = (r, c) => ({
+    x: ((flipped ? 7 - c : c) + 0.5) * 12.5,
+    y: ((flipped ? 7 - r : r) + 0.5) * 12.5
+  });
+  const p1 = toCoord(bm.fr, bm.fc);
+  const p2 = toCoord(bm.tr, bm.tc);
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("x1", p1.x);
+  line.setAttribute("y1", p1.y);
+  line.setAttribute("x2", p2.x);
+  line.setAttribute("y2", p2.y);
+  line.setAttribute("stroke", "#22c55e");
+  line.setAttribute("stroke-width", "2.4");
+  line.setAttribute("marker-end", "url(#ah-green)");
+  line.setAttribute("opacity", "0.9");
+  svg.appendChild(line);
+}
+
+function onSquareTap(r, c) {
+  if (gameOver || waitingTakebackChoice) return;
+  if (reviewIndex !== null) reviewIndex = null;
+  if (gameMode === "bot" && turn !== "w") return;
+  if (gameMode === "online" && turn !== myOnlineColor) return;
+
+  const chosenMove = legalMovesForSelected.find(m => m.tr === r && m.tc === c);
+  if (chosenMove) {
+    // 1. МГНОВЕННО передвигаем фигуру на экране (0 мс задержки)
+    selectedSq = null;
+    legalMovesForSelected = [];
+    applyMoveInternal(chosenMove, true);
+    renderBoard();
+    return;
+  }
+
+  const p = board[r][c];
+  if (p && p.color === turn) {
+    selectedSq = { r, c };
+    legalMovesForSelected = getLegalMoves(board, turn).filter(m => m.fr === r && m.fc === c);
+  } else {
+    selectedSq = null;
+    legalMovesForSelected = [];
+  }
+  renderBoard();
+}
+
+function applyMoveInternal(move, isLocalAction) {
+  const boardBefore = cloneBoard(board);
+  const mover = turn;
+  board = makeMoveOnBoard(board, move);
+  turn = (turn === "w" ? "b" : "w");
+
+  const hash = getBoardHash(board, turn);
+  positionCounts[hash] = (positionCounts[hash] || 0) + 1;
+
+  const record = {
+    ply: moveHistory.length,
+    mover,
+    move,
+    boardBefore,
+    boardAfter: cloneBoard(board),
+    analysis: null
+  };
+  moveHistory.push(record);
+
+  updateStatusHeader();
+
+  // 2. Асинхронно через 15 мс считаем оценку и ход бота, не задерживая отрисовку
+  setTimeout(async () => {
+    record.analysis = analyzeMoveWithExplanation(boardBefore, move, record.ply);
+
+    if (gameMode === "online" && isLocalAction && onlineRoomId) {
+      await dbSet(`games/${onlineRoomId}`, {
+        moves: moveHistory.map(h => h.move),
+        updatedAt: Date.now()
+      });
+    }
+
+    // Если играем с Ботом и это наш ход
+    if (gameMode === "bot" && mover === "w") {
+      const showLive = document.getElementById("instantEvalToggle").checked;
+      if (showLive) showCoachCardForRecord(record);
+
+      const tbMode = document.getElementById("takebackMode").value;
+      const isBad = ["inaccuracy", "mistake", "miss", "blunder"].includes(record.analysis.catKey);
+
+      if (!gameOver && (tbMode === "always" || (tbMode === "mistake" && isBad))) {
+        waitingTakebackChoice = true;
+        document.getElementById("takebackPromptText").innerHTML =
+          `Оценка хода <b>${record.analysis.san}</b>: <b style="color:${record.analysis.cat.color}">${record.analysis.cat.label}</b>. Переходить или оставить ход?`;
+        document.getElementById("takebackDecisionBar").style.display = "block";
+        renderBoard();
+        return;
+      }
+      renderBoard();
+      if (!gameOver) setTimeout(makeBotMove, 220);
+    } else {
+      renderBoard();
+    }
+  }, 15);
+}
+
+function showCoachCardForRecord(rec) {
+  if (!rec || !rec.analysis) return;
+  const card = document.getElementById("coachCard");
+  const bdg = document.getElementById("coachBadge");
+  const ev = document.getElementById("coachEval");
+  const txt = document.getElementById("coachText");
+  card.style.display = "block";
+  bdg.style.background = rec.analysis.cat.color;
+  bdg.textContent = `${rec.analysis.cat.label} (${rec.analysis.san})`;
+  const sign = rec.analysis.cpWhite >= 0 ? "+" : "";
+  ev.textContent = `Оценка: ${sign}${(rec.analysis.cpWhite / 100).toFixed(1)} | Точность: ${rec.analysis.accuracy.toFixed(0)}%`;
+  txt.innerHTML = rec.analysis.reason;
+}
+
+function confirmTakeback() {
+  if (!moveHistory.length) return;
+  const last = moveHistory.pop();
+  board = last.boardBefore;
+  turn = "w";
+  waitingTakebackChoice = false;
+  document.getElementById("takebackDecisionBar").style.display = "none";
+  document.getElementById("coachCard").style.display = "none";
+  updateStatusHeader();
+  renderBoard();
+}
+
+function confirmKeepMove() {
+  waitingTakebackChoice = false;
+  document.getElementById("takebackDecisionBar").style.display = "none";
+  if (!gameOver && turn === "b" && gameMode === "bot") {
+    setTimeout(makeBotMove, 160);
+  }
+}
+
+function manualUndo() {
+  if (gameMode === "online") return;
+  if (waitingTakebackChoice) { confirmTakeback(); return; }
+  if (gameMode === "bot" && moveHistory.length >= 2) {
+    moveHistory.pop();
+    const prev = moveHistory.pop();
+    board = prev.boardBefore;
+    turn = "w";
+  } else if (moveHistory.length >= 1) {
+    const prev = moveHistory.pop();
+    board = prev.boardBefore;
+    turn = prev.mover;
+  }
+  gameOver = false;
+  reviewIndex = null;
+  updateStatusHeader();
+  renderBoard();
+}
+
+function makeBotMove() {
+  if (gameOver || turn !== "b" || gameMode !== "bot") return;
+  const lvl = parseInt(document.getElementById("botLevel").value, 10);
+  const depth = lvl >= 3 ? 2 : 1;
+  const scored = findBestMoves(board, "b", depth);
+  if (!scored.length) return;
+
+  let pick = scored[0].move;
+  if (lvl === 1 && scored.length > 2) {
+    pick = scored[Math.min(scored.length - 1, Math.floor(Math.random() * 3))].move;
+  } else if (lvl === 2 && scored.length > 1 && Math.random() < 0.3) {
+    pick = scored[1].move;
+  }
+  applyMoveInternal(pick, false);
+  renderBoard();
+}
+
+function updateStatusHeader() {
+  const legal = getLegalMoves(board, turn);
+  const st = document.getElementById("statusTitle");
+  if (!legal.length) {
+    gameOver = true;
+    if (isKingInCheck(board, turn)) {
+      st.textContent = turn === "w" ? "🏆 Мат! Победа Чёрных" : "🏆 Мат! Победа Белых";
+    } else {
+      st.textContent = "🤝 Пат! Ничья";
+    }
+    openFullReport();
+    return;
+  }
+  st.textContent = turn === "w" ? "🟢 Ход Белых" : "⚫ Ход Чёрных";
+}
+
+/* =========================================================
+   7. ПОЛНЫЙ ОТЧЁТ О ПАРТИИ (КАК В CHESS.COM)
+   ========================================================= */
+function openFullReport() {
+  if (!moveHistory.length) return;
+  document.getElementById("hiddenMovesNotice").style.display = "none";
+  document.getElementById("reportSection").style.display = "flex";
+
+  let wAccSum = 0, wCnt = 0, bAccSum = 0, bCnt = 0;
+  const counts = {};
+  Object.keys(CATEGORIES).forEach(k => counts[k] = { w: 0, b: 0 });
+
+  const listEl = document.getElementById("movesList");
+  listEl.innerHTML = "";
+
+  moveHistory.forEach((rec, idx) => {
+    if (!rec.analysis) rec.analysis = analyzeMoveWithExplanation(rec.boardBefore, rec.move, idx);
+    const a = rec.analysis;
+    if (rec.mover === "w") { wAccSum += a.accuracy; wCnt++; counts[a.catKey].w++; }
+    else { bAccSum += a.accuracy; bCnt++; counts[a.catKey].b++; }
+
+    const row = document.createElement("div");
+    row.className = "move-row";
+    const moveNum = Math.floor(idx / 2) + 1;
+    const prefix = rec.mover === "w" ? `${moveNum}. ⬜` : `${moveNum}... ⬛`;
+    row.innerHTML = `
+      <span><b>${prefix} ${a.san}</b></span>
+      <span class="badge-pill" style="background:${a.cat.color}">${a.cat.label}</span>
+    `;
+    row.onclick = () => {
+      reviewIndex = idx;
+      document.querySelectorAll(".move-row").forEach(el => el.classList.remove("active"));
+      row.classList.add("active");
+      showCoachCardForRecord(rec);
+      renderBoard();
+    };
+    listEl.appendChild(row);
+  });
+
+  document.getElementById("accWhite").textContent = wCnt ? (wAccSum / wCnt).toFixed(1) + "%" : "—%";
+  document.getElementById("accBlack").textContent = bCnt ? (bAccSum / bCnt).toFixed(1) + "%" : "—%";
+
+  const cg = document.getElementById("countsGrid");
+  cg.innerHTML = "";
+  Object.keys(CATEGORIES).forEach(k => {
+    const c = CATEGORIES[k];
+    const total = counts[k].w + counts[k].b;
+    if (total > 0 || ["brilliant","best","inaccuracy","mistake","blunder"].includes(k)) {
+      const d = document.createElement("div");
+      d.style.cssText = "display:flex;justify-content:space-between;background:#141312;padding:4px 7px;border-radius:5px;";
+      d.innerHTML = `<span style="color:${c.color};font-weight:700;">${c.label}</span> <b>⬜${counts[k].w} / ⬛${counts[k].b}</b>`;
+      cg.appendChild(d);
+    }
+  });
+
+  reviewIndex = moveHistory.length - 1;
+  showCoachCardForRecord(moveHistory[reviewIndex]);
+  renderBoard();
+}
+
+function setGameMode(m) {
+  gameMode = m;
+  onlineRoomId = null;
+  document.getElementById("botSettingsBar").style.display = (m === "bot") ? "flex" : "none";
+  document.getElementById("modeBadge").textContent = m === "bot" ? "Режим: С Ботом" : "Режим: 2 игрока на 1 тел.";
+  updateBotLabel();
+  restartGame();
+}
+
+function updateBotLabel() {
+  if (gameMode === "bot") {
+    const sel = document.getElementById("botLevel");
+    document.getElementById("topName").textContent = "Бот " + sel.options[sel.selectedIndex].text;
+  } else if (gameMode === "local") {
+    document.getElementById("topName").textContent = "Друг (Чёрные)";
+  }
+}
+
+function restartGame(keepOnline = false) {
+  if (!keepOnline && gameMode === "online") gameMode = "bot";
+  initStartBoard();
+  document.getElementById("reportSection").style.display = "none";
+  document.getElementById("hiddenMovesNotice").style.display = "block";
+  document.getElementById("coachCard").style.display = "none";
+  document.getElementById("takebackDecisionBar").style.display = "none";
+  updateStatusHeader();
+  renderBoard();
+}
+
+function flipBoard() { flipped = !flipped; renderBoard(); }
+function openModal(id) { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+// Старт приложения
+updateAuthUI();
+initStartBoard();
+renderBoard();
+</script>
+</body>
+</html>
